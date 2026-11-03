@@ -1,0 +1,57 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256))
+    role: Mapped[str] = mapped_column(String(20), default="user")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    amount: Mapped[float] = mapped_column(Numeric(14, 2))
+    verification_status: Mapped[str] = mapped_column(String(20), default="not_applicable")
+    risk_score: Mapped[int] = mapped_column(Integer)
+    model_score: Mapped[int] = mapped_column(Integer)
+    risk_level: Mapped[str] = mapped_column(String(12))
+    action: Mapped[str] = mapped_column(String(20))
+    reasons: Mapped[list[str]] = mapped_column(JSON)
+    verification_details: Mapped[dict[str, object] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    review_status: Mapped[str] = mapped_column(String(24), default="Open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    user: Mapped[User] = relationship(back_populates="transactions")
+
+
+class EducationContent(Base):
+    __tablename__ = "education_content"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    video_url: Mapped[str] = mapped_column(String(500))
+    description: Mapped[str] = mapped_column(String(1000))
+    ai_summary: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    category: Mapped[str] = mapped_column(String(50), default="general")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
