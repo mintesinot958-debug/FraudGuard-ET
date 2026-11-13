@@ -32,43 +32,6 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  Future<void> _showUrlDialog() async {
-    final controller = TextEditingController(text: BackendApi.baseUrl);
-    final newUrl = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(L.t('server_settings')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(L.t('server_instructions')),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                  labelText: L.t('server_url'),
-                  hintText: 'http://127.0.0.1:8000'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(L.t('cancel'))),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: Text(L.t('save')),
-          ),
-        ],
-      ),
-    );
-
-    if (newUrl != null && newUrl.isNotEmpty) {
-      await BackendApi.instance.setBaseUrl(newUrl);
-      setState(() {}); // Refresh to show new URL
-    }
-  }
-
   Future<void> _submit() async {
     final email = _email.text.trim();
     if (email.isEmpty || _password.text.isEmpty) {
@@ -215,22 +178,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   icon: const Icon(Icons.offline_bolt_outlined),
                   label: Text(L.t('offline_safety_mode')),
-                ),
-                const SizedBox(height: 48),
-                InkWell(
-                  onTap: _showUrlDialog,
-                  child: Column(
-                    children: [
-                      Text(L.t('connected_to'),
-                          style: theme.textTheme.bodySmall),
-                      Text(BackendApi.baseUrl,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.bold)),
-                      Text(L.t('tap_to_change'),
-                          style: TextStyle(fontSize: 10, color: Colors.grey)),
-                    ],
-                  ),
                 ),
               ],
             ),

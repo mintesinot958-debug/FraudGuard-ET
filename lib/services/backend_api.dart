@@ -15,25 +15,13 @@ class BackendApi {
   BackendApi._();
   static final BackendApi instance = BackendApi._();
 
-  static const _fallbackUrl = 'http://10.0.2.2:8000';
-  static String _currentUrl = _fallbackUrl;
+  static const _baseUrl = 'https://fraudguard-et-1.onrender.com';
 
-  static String get baseUrl => _currentUrl;
+  static String get baseUrl => _baseUrl;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedUrl = prefs.getString('api_base_url');
-    _currentUrl = (savedUrl != null && savedUrl.trim().isNotEmpty)
-        ? savedUrl.trim()
-        : const String.fromEnvironment('API_BASE_URL',
-            defaultValue: _fallbackUrl);
-  }
-
-  Future<void> setBaseUrl(String newUrl) async {
-    final normalized = newUrl.trim();
-    _currentUrl = normalized.isEmpty ? _fallbackUrl : normalized;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('api_base_url', _currentUrl);
+    await prefs.remove('api_base_url');
   }
 
   String? _token;
@@ -63,7 +51,7 @@ class BackendApi {
       response = await request.timeout(const Duration(seconds: 30));
     } on http.ClientException {
       throw ApiException(
-          'Cannot reach the server at $baseUrl. Check if the backend is running and your IP is correct.');
+          'Cannot reach the server at $baseUrl. Check your internet connection.');
     } on TimeoutException {
       throw const ApiException(
           'The server did not respond. Check your connection.');

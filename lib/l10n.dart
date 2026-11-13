@@ -241,10 +241,6 @@ class L {
       'dash': 'Dash',
       'reports': 'Reports',
       'reasons': 'Reasons',
-      'server_settings': 'Server Settings',
-      'server_instructions':
-          'Use your computer IP, or on a real phone use the adb reverse URL: http://127.0.0.1:8000',
-      'server_url': 'Server URL',
       'save': 'Save',
       'switch_to_amharic': 'Switch language to Amharic',
       'switch_to_english': 'Switch language to English',
@@ -257,10 +253,9 @@ class L {
       'sign_in': 'Sign in',
       'already_have_account': 'Already have an account? Sign in',
       'new_to_fraudguard': 'New to FraudGuard? Create account',
-      'connected_to': 'Connected to:',
-      'tap_to_change': '(Tap to change)',
       'please_fill_all_fields': 'Please fill in all fields',
-      'cannot_reach_server': 'Cannot reach server. Check your IP settings.',
+      'cannot_reach_server':
+          'Cannot reach server. Check your internet connection.',
       'verify_payments_intro': 'Verify Payments',
       'verify_payments_intro_desc':
           'Scan or enter receipt details to instantly verify if a payment is legitimate.',
@@ -270,6 +265,9 @@ class L {
       'secure_transfers_intro': 'Secure Transfers',
       'secure_transfers_intro_desc':
           'Check transaction risk scores before sending money to prevent fraud.',
+      'motorcycle_intro': 'Stay safe on every ride',
+      'motorcycle_intro_desc':
+          'Stay alert on every ride. Verify payments and watch for suspicious messages with FraudGuard ET.',
       'get_started': 'Get Started',
       'next': 'Next',
       'offline_notice':
@@ -622,10 +620,6 @@ class L {
       'dash': 'ዳሽቦርድ',
       'reports': 'ሪፖርቶች',
       'reasons': 'ምክንያቶች',
-      'server_settings': 'የአገልጋይ ቅንብሮች',
-      'server_instructions':
-          'የኮምፒውተርዎን IP ይጠቀሙ፤ በእውነተኛ ስልክ ላይ ደግሞ የadb reverse አድራሻውን ይጠቀሙ፦ http://127.0.0.1:8000',
-      'server_url': 'የአገልጋይ URL',
       'save': 'አስቀምጥ',
       'switch_to_amharic': 'ቋንቋውን ወደ አማርኛ ይቀይሩ',
       'switch_to_english': 'ቋንቋውን ወደ እንግሊዝኛ ይቀይሩ',
@@ -638,10 +632,8 @@ class L {
       'sign_in': 'ይግቡ',
       'already_have_account': 'መለያ አለዎት? ይግቡ',
       'new_to_fraudguard': 'FraudGuardን አዲስ ነዎት? መለያ ይፍጠሩ',
-      'connected_to': 'የተገናኘው ከ፦',
-      'tap_to_change': '(ለመቀየር ይንኩ)',
       'please_fill_all_fields': 'እባክዎ ሁሉንም መስኮች ይሙሉ።',
-      'cannot_reach_server': 'አገልጋዩን ማግኘት አልተቻለም። የIP ቅንብርዎን ያረጋግጡ።',
+      'cannot_reach_server': 'አገልጋዩን ማግኘት አልተቻለም። የኢንተርኔት ግንኙነትዎን ያረጋግጡ።',
       'verify_payments_intro': 'ክፍያዎችን ያረጋግጡ',
       'verify_payments_intro_desc':
           'ክፍያው ትክክለኛ መሆኑን ወዲያውኑ ለማረጋገጥ ደረሰኙን ይቃኙ ወይም ዝርዝሩን ያስገቡ።',
@@ -651,6 +643,9 @@ class L {
       'secure_transfers_intro': 'ዝውውሮችን ያስጠብቁ',
       'secure_transfers_intro_desc':
           'ማጭበርበርን ለመከላከል ገንዘብ ከመላክዎ በፊት የግብይቱን የስጋት ውጤት ያረጋግጡ።',
+      'motorcycle_intro': 'በእያንዳንዱ ጉዞ ደህንነትዎን ይጠብቁ',
+      'motorcycle_intro_desc':
+          'በጉዞዎ ላይ ንቁ ይሁኑ። ክፍያዎችን ያረጋግጡ እና አጠራጣሪ መልዕክቶችን በFraudGuard ET ይለዩ።',
       'get_started': 'ይጀምሩ',
       'next': 'ቀጣይ',
       'offline_notice':
