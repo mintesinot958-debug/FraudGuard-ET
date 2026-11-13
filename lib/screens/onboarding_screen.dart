@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
+import '../l10n.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onFinished;
@@ -16,21 +17,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingItem> _items = [
     OnboardingItem(
-      title: 'Verify Payments',
-      description: 'Scan or enter receipt details to instantly verify if a payment is legitimate.',
-      lottieUrl: 'https://assets10.lottiefiles.com/packages/lf20_6sxyjyjj.json', // Security shield
+      title: L.t('verify_payments_intro'),
+      description: L.t('verify_payments_intro_desc'),
+      lottieUrl:
+          'https://assets10.lottiefiles.com/packages/lf20_6sxyjyjj.json', // Security shield
       icon: Icons.verified_user,
     ),
     OnboardingItem(
-      title: 'Detect Scams',
-      description: 'Analyze suspicious SMS and Telegram messages to protect yourself from phishing.',
-      lottieUrl: 'https://assets10.lottiefiles.com/packages/lf20_t9gk1yfw.json', // Alert/Warning
+      title: L.t('detect_scams_intro'),
+      description: L.t('detect_scams_intro_desc'),
+      lottieUrl:
+          'https://assets10.lottiefiles.com/packages/lf20_t9gk1yfw.json', // Alert/Warning
       icon: Icons.chat_bubble,
     ),
     OnboardingItem(
-      title: 'Secure Transfers',
-      description: 'Check transaction risk scores before sending money to prevent fraud.',
-      lottieUrl: 'https://assets10.lottiefiles.com/packages/lf20_ai93y4ym.json', // Wallet/Payment
+      title: L.t('secure_transfers_intro'),
+      description: L.t('secure_transfers_intro_desc'),
+      lottieUrl:
+          'https://assets10.lottiefiles.com/packages/lf20_ai93y4ym.json', // Wallet/Payment
       icon: Icons.account_balance_wallet,
     ),
   ];
@@ -109,7 +113,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         decoration: BoxDecoration(
                           color: _currentPage == index
                               ? theme.colorScheme.primary
-                              : theme.colorScheme.primary.withValues(alpha: 0.2),
+                              : theme.colorScheme.primary
+                                  .withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -127,9 +132,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       }
                     },
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16),
                     ),
-                    child: Text(_currentPage == _items.length - 1 ? 'Get Started' : 'Next'),
+                    child: Text(_currentPage == _items.length - 1
+                        ? L.t('get_started')
+                        : L.t('next')),
                   ),
                 ],
               ),

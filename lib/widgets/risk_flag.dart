@@ -15,7 +15,10 @@ class RiskFlag extends StatelessWidget {
             : (L.t('high'), Colors.red);
 
     return Semantics(
-      label: '$label risk, $score out of 100',
+      label: L
+          .t('risk_semantics')
+          .replaceAll('{label}', label)
+          .replaceAll('{score}', '$score'),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(

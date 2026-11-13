@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n.dart';
 import '../services/backend_api.dart';
 import '../services/auth_store.dart';
 import 'admin_management_screen.dart';
@@ -42,7 +43,8 @@ class _EducationScreenState extends State<EducationScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return Center(
+                    child: Text('${L.t('error_prefix')}: ${snapshot.error}'));
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return ListView(
@@ -52,8 +54,7 @@ class _EducationScreenState extends State<EducationScreen> {
                         child: Icon(Icons.video_library_outlined,
                             size: 64, color: Colors.grey)),
                     const SizedBox(height: 16),
-                    const Center(
-                        child: Text('No educational content available yet.')),
+                    Center(child: Text(L.t('no_education_content'))),
                     if (isAdmin)
                       Padding(
                         padding: const EdgeInsets.all(40),
@@ -64,7 +65,7 @@ class _EducationScreenState extends State<EducationScreen> {
                                 builder: (_) => const AdminManagementScreen()),
                           ).then((_) => _refresh()),
                           icon: const Icon(Icons.add),
-                          label: const Text('Post Your First Video'),
+                          label: Text(L.t('post_education_content')),
                         ),
                       ),
                   ],
@@ -76,21 +77,55 @@ class _EducationScreenState extends State<EducationScreen> {
                 itemCount: snapshot.data!.length,
                 itemBuilder: (context, index) {
                   final item = snapshot.data![index];
+                  final postType = item['post_type'] as String? ?? 'video';
+                  final imageUrl = item['image_url'] as String?;
+                  final videoUrl = item['video_url'] as String? ?? '';
                   return Card(
                     margin: const EdgeInsets.only(bottom: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Container(
-                          height: 180,
-                          decoration: const BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(24)),
+                        if (postType == 'image' && imageUrl != null)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                            child: Image.network(
+                              imageUrl.startsWith('http')
+                                  ? imageUrl
+                                  : '${BackendApi.baseUrl}$imageUrl',
+                              height: 220,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const SizedBox(
+                                height: 180,
+                                child: Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (postType == 'video')
+                          Container(
+                            height: 180,
+                            decoration: const BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(24),
+                              ),
+                            ),
+                            child: const Icon(Icons.play_circle_outline,
+                                size: 64, color: Colors.white),
+                          )
+                        else
+                          Container(
+                            height: 100,
+                            color: theme.colorScheme.primaryContainer,
+                            child: Icon(
+                              Icons.article_outlined,
+                              size: 48,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
-                          child: const Icon(Icons.play_circle_outline,
-                              size: 64, color: Colors.white),
-                        ),
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -100,6 +135,19 @@ class _EducationScreenState extends State<EducationScreen> {
                                   style: theme.textTheme.titleLarge
                                       ?.copyWith(fontWeight: FontWeight.bold)),
                               const SizedBox(height: 8),
+                              if (postType != 'text')
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    postType == 'image'
+                                        ? L.t('image_post')
+                                        : L.t('video'),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               Text(item['description'],
                                   style: theme.textTheme.bodyMedium),
                               if (item['ai_summary'] != null) ...[
@@ -120,23 +168,26 @@ class _EducationScreenState extends State<EducationScreen> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                           child: Text(
-                                              'AI Safety Tip: ${item['ai_summary']}',
+                                              '${L.t('ai_safety_tip')}: ${item['ai_summary']}',
                                               style: const TextStyle(
                                                   fontSize: 12))),
                                     ],
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 16),
-                              FilledButton.icon(
-                                onPressed: () => launchUrl(Uri.parse(item[
-                                            'video_url']
-                                        .startsWith('http')
-                                    ? item['video_url']
-                                    : '${BackendApi.baseUrl}${item['video_url']}')),
-                                icon: const Icon(Icons.play_arrow),
-                                label: const Text('WATCH VIDEO'),
-                              ),
+                              if (postType == 'video' &&
+                                  videoUrl.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                  onPressed: () => launchUrl(Uri.parse(
+                                    videoUrl.startsWith('http')
+                                        ? videoUrl
+                                        : '${BackendApi.baseUrl}$videoUrl',
+                                  )),
+                                  icon: const Icon(Icons.play_arrow),
+                                  label: Text(L.t('watch_video')),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -158,8 +209,8 @@ class _EducationScreenState extends State<EducationScreen> {
                 MaterialPageRoute(
                     builder: (_) => const AdminManagementScreen()),
               ).then((_) => _refresh()),
-              icon: const Icon(Icons.video_call),
-              label: const Text('Post Video'),
+              icon: const Icon(Icons.add),
+              label: Text(L.t('create_post')),
               backgroundColor: Colors.orange,
             ),
           ),

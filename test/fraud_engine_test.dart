@@ -10,6 +10,41 @@ void main() {
       expect(r.reasons, isNotEmpty);
     });
 
+    group('payment SMS analysis', () {
+      test('flags a payment claim that asks for money back', () {
+        final result = FraudEngine.analyzePaymentSms(
+          'Payment received ETB 1,000. Wrong transfer, send the money back.',
+        );
+
+        expect(result.isPaymentRelated, isTrue);
+        expect(result.label, ScamLabel.scam);
+        expect(
+          result.reasons,
+          contains('Requests money back after claiming a payment was sent.'),
+        );
+      });
+
+      test(
+          'recognizes a normal bank payment notice without declaring it verified',
+          () {
+        final result = FraudEngine.analyzePaymentSms(
+          'You have received ETB 500.00 in your CBE account.',
+        );
+
+        expect(result.isPaymentRelated, isTrue);
+        expect(result.label, ScamLabel.safe);
+        expect(result.reasons.single, contains('verify the payment'));
+      });
+
+      test('ignores unrelated inbox messages', () {
+        final result =
+            FraudEngine.analyzePaymentSms('See you at lunch tomorrow.');
+
+        expect(result.isPaymentRelated, isFalse);
+        expect(result.score, 0);
+      });
+    });
+
     test('Amharic lottery + PIN message is flagged', () {
       final r = FraudEngine.checkMessage('ሎተሪ አሸንፈዋል ፒን ያስገቡ');
       expect(r.label, ScamLabel.scam);

@@ -9,7 +9,7 @@ class ResultCard extends StatelessWidget {
   final int score;
   final List<String> reasons;
   final String? footer;
-  
+
   const ResultCard({
     super.key,
     required this.title,
@@ -23,7 +23,7 @@ class ResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isLowRisk = score < 30;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -47,7 +47,8 @@ class ResultCard extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.05),
-                border: Border(bottom: BorderSide(color: color.withValues(alpha: 0.1))),
+                border: Border(
+                    bottom: BorderSide(color: color.withValues(alpha: 0.1))),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,18 +75,22 @@ class ResultCard extends StatelessWidget {
                       SizedBox(
                         width: 80,
                         height: 80,
-                        child: isLowRisk 
-                          ? Icon(Icons.check_circle_rounded, color: color, size: 60)
-                          : Lottie.network(
-                              score < 60 
-                                ? 'https://assets3.lottiefiles.com/private_files/lf30_8scv8p.json' // Warning
-                                : 'https://assets10.lottiefiles.com/packages/lf20_K7a40S.json', // Error
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                score < 60 ? Icons.warning_rounded : Icons.gpp_maybe_rounded,
-                                color: color,
-                                size: 60,
+                        child: isLowRisk
+                            ? Icon(Icons.check_circle_rounded,
+                                color: color, size: 60)
+                            : Lottie.network(
+                                score < 60
+                                    ? 'https://assets3.lottiefiles.com/private_files/lf30_8scv8p.json' // Warning
+                                    : 'https://assets10.lottiefiles.com/packages/lf20_K7a40S.json', // Error
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(
+                                  score < 60
+                                      ? Icons.warning_rounded
+                                      : Icons.gpp_maybe_rounded,
+                                  color: color,
+                                  size: 60,
+                                ),
                               ),
-                            ),
                       ),
                     ],
                   ),
@@ -129,7 +134,8 @@ class ResultCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info_outline, size: 18, color: theme.colorScheme.primary),
+                      Icon(Icons.info_outline,
+                          size: 18, color: theme.colorScheme.primary),
                       const SizedBox(width: 8),
                       Text(
                         L.t('reasons'),
@@ -141,38 +147,41 @@ class ResultCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   ...reasons.map((r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Icon(Icons.circle, size: 6, color: color),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            r,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              height: 1.4,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Icon(Icons.circle, size: 6, color: color),
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                L.reason(r),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  height: 1.4,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )),
+                      )),
                   if (footer != null) ...[
                     const Divider(height: 32),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.tips_and_updates_outlined, size: 20, color: theme.colorScheme.primary),
+                          Icon(Icons.tips_and_updates_outlined,
+                              size: 20, color: theme.colorScheme.primary),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class Credentials(BaseModel):
@@ -65,6 +65,86 @@ class ReviewUpdate(BaseModel):
     status: Literal["Open", "Investigating", "Confirmed Fraud", "False Positive"]
 
 
+class CommunityReportSubmission(BaseModel):
+    category: Literal["phishing", "fake_receipt", "impersonation", "other"]
+    title: str = Field(min_length=3, max_length=120)
+    description: str = Field(min_length=10, max_length=1500)
+    indicator: str | None = Field(default=None, max_length=200)
+    provider: str | None = Field(default=None, max_length=50)
+
+    @field_validator("title", "description", mode="before")
+    @classmethod
+    def strip_required_text(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("indicator", "provider", mode="before")
+    @classmethod
+    def strip_optional_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+
+class CommunityReportStatusUpdate(BaseModel):
+    status: Literal["published", "rejected"]
+
+
+class CommunityReportResponse(BaseModel):
+    id: int
+    category: str
+    title: str
+    description: str
+    indicator: str | None
+    provider: str | None
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExpectedPaymentSubmission(BaseModel):
+    provider: str = Field(min_length=1, max_length=40)
+    expected_amount: float = Field(gt=0, le=100_000_000)
+    reference: str | None = Field(default=None, max_length=2048)
+    description: str = Field(default="", max_length=120)
+
+    @field_validator("provider", mode="before")
+    @classmethod
+    def strip_provider(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("reference", "description", mode="before")
+    @classmethod
+    def strip_optional_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+
+class ReconciliationTransaction(BaseModel):
+    id: int
+    provider: str | None
+    reference: str | None
+    amount: float
+    created_at: datetime
+
+
+class ExpectedPaymentResult(BaseModel):
+    id: int
+    provider: str
+    expected_amount: float
+    reference: str | None
+    description: str
+    created_at: datetime
+    status: Literal["missing", "matched", "amount_mismatch", "duplicate"]
+    actual_transactions: list[ReconciliationTransaction]
+
+
+class ReconciliationResponse(BaseModel):
+    expected_payments: list[ExpectedPaymentResult]
+    unmatched_received: list[ReconciliationTransaction]
+
+
 class EducationCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     video_url: str = Field(min_length=1, max_length=500)
@@ -74,8 +154,10 @@ class EducationCreate(BaseModel):
 
 class EducationResponse(BaseModel):
     id: int
+    post_type: Literal["video", "text", "image"] = "video"
     title: str
     video_url: str
+    image_url: str | None = None
     description: str
     ai_summary: str | None
     category: str

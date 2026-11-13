@@ -14,7 +14,6 @@ class Settings:
     jwt_expire_minutes: int
     admin_emails: frozenset[str]
     cors_origins: tuple[str, ...]
-    gemini_api_key: str | None
     groq_api_key: str | None
 
 
@@ -47,7 +46,6 @@ def get_settings() -> Settings:
             for origin in os.getenv("CORS_ORIGINS", default_cors).split(",")
             if origin.strip()
         ),
-        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip() or None,
         groq_api_key=os.getenv("GROQ_API_KEY", "").strip() or None,
     )
 

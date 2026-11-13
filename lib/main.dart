@@ -9,6 +9,7 @@ import 'screens/verify_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/education_screen.dart';
 import 'screens/admin_management_screen.dart';
+import 'screens/community_reports_screen.dart';
 import 'services/auth_store.dart';
 import 'services/backend_api.dart';
 
@@ -126,26 +127,32 @@ class _MainScreenState extends State<MainScreen> {
         final authenticated = AuthStore.instance.isAuthenticated;
         final isAdmin = AuthStore.instance.isAdmin;
 
-        if (!authenticated) return const AuthScreen();
+        if (!authenticated) {
+          return AuthScreen(
+            onToggleTheme: widget.onToggleTheme,
+            themeMode: widget.themeMode,
+          );
+        }
 
         final pages = <Widget>[
-          const VerifyScreen(),
-          const ScamScreen(),
-          const ScoreScreen(),
-          const EducationScreen(),
+          VerifyScreen(),
+          ScamScreen(),
+          ScoreScreen(),
+          EducationScreen(),
           DashboardScreen(key: _dashboardKey),
+          CommunityReportsScreen(),
         ];
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('FraudGuard ET',
+            title: Text(L.t('app_title'),
                 style: TextStyle(fontWeight: FontWeight.w900)),
             actions: [
               if (isAdmin)
                 IconButton(
                   icon: const Icon(Icons.admin_panel_settings,
                       color: Colors.orange),
-                  tooltip: 'Admin Panel',
+                  tooltip: L.t('admin_panel'),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -176,18 +183,24 @@ class _MainScreenState extends State<MainScreen> {
               tab = i;
               if (i == 4) _dashboardKey = UniqueKey();
             }),
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                  icon: Icon(Icons.verified_user_outlined), label: 'Verify'),
+                  icon: const Icon(Icons.verified_user_outlined),
+                  label: L.t('verify')),
               NavigationDestination(
-                  icon: Icon(Icons.chat_bubble_outline), label: 'Scam'),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: L.t('nav_scam')),
               NavigationDestination(
-                  icon: Icon(Icons.account_balance_wallet_outlined),
-                  label: 'Score'),
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: L.t('score')),
               NavigationDestination(
-                  icon: Icon(Icons.school_outlined), label: 'Learn'),
+                  icon: const Icon(Icons.school_outlined), label: L.t('learn')),
               NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined), label: 'Dash'),
+                  icon: const Icon(Icons.dashboard_outlined),
+                  label: L.t('dash')),
+              NavigationDestination(
+                  icon: const Icon(Icons.groups_outlined),
+                  label: L.t('reports')),
             ],
           ),
         );

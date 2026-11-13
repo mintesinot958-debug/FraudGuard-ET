@@ -49,9 +49,43 @@ class EducationContent(Base):
     __tablename__ = "education_content"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    post_type: Mapped[str] = mapped_column(
+        String(20), default="video", server_default="video"
+    )
     title: Mapped[str] = mapped_column(String(200))
     video_url: Mapped[str] = mapped_column(String(500))
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str] = mapped_column(String(1000))
     ai_summary: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     category: Mapped[str] = mapped_column(String(50), default="general")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class CommunityReport(Base):
+    __tablename__ = "community_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    category: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(String(1500))
+    indicator: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )
+
+
+class ExpectedPayment(Base):
+    __tablename__ = "expected_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(40))
+    expected_amount: Mapped[float] = mapped_column(Numeric(14, 2))
+    reference: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    description: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )

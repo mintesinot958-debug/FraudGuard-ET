@@ -56,3 +56,12 @@ flutter run
 - Release builds on Android block plain `http://` APIs. Use an `https://` URL (like ngrok or a real server) for production.
 - Ensure `android:usesCleartextTraffic="true"` is in your Manifest for local testing.
 - Disabling Impeller is recommended for older devices (like Samsung M-series) to prevent black screens.
+
+## Deploy the backend to Render
+
+1. Push this repository to GitHub and create a new **Blueprint** in Render from that repository.
+2. Render will read `render.yaml` and create the FastAPI service, PostgreSQL database, and persistent upload disk.
+3. During setup, enter the admin email(s) for `ADMIN_EMAILS`. If you host a browser-based client, set `CORS_ORIGINS` in the service environment to its exact origin(s); the Android app does not use CORS.
+4. After the deployment is healthy, copy the service's HTTPS URL into the app's **Server URL** field.
+
+Keep the generated `JWT_SECRET` private. The PostgreSQL database stores app records, and the mounted disk stores uploaded education media across service restarts and deploys.

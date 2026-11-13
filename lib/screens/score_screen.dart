@@ -29,27 +29,33 @@ class _ScoreScreenState extends State<ScoreScreen> {
   }
 
   Widget _inputLabel(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, top: 16),
-    child: Text(
-      text,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-    ),
-  );
+        padding: const EdgeInsets.only(bottom: 8, top: 16),
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+      );
 
   Future<void> _run() async {
     final amount = double.tryParse(amt.text.trim().replaceAll(',', ''));
     final transactionHour = int.tryParse(hour.text);
     final accountAge = int.tryParse(age.text);
     final transactionCount = int.tryParse(n24.text);
-    
-    if (amount == null || transactionHour == null || accountAge == null || transactionCount == null) {
-      setState(() => error = 'Please enter valid numbers');
+
+    if (amount == null ||
+        transactionHour == null ||
+        accountAge == null ||
+        transactionCount == null) {
+      setState(() => error = L.t('please_enter_valid_numbers'));
       return;
     }
 
-    if (amount <= 0 || transactionHour < 0 || transactionHour > 23 ||
-        accountAge < 0 || transactionCount < 0) {
-      setState(() => error = 'Amount must be above 0 and hour must be 0-23.');
+    if (amount <= 0 ||
+        transactionHour < 0 ||
+        transactionHour > 23 ||
+        accountAge < 0 ||
+        transactionCount < 0) {
+      setState(() => error = L.t('amount_hour_validation'));
       return;
     }
 
@@ -71,7 +77,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     } on ApiException catch (exception) {
       if (mounted) setState(() => error = exception.message);
     } catch (e) {
-      if (mounted) setState(() => error = 'An unexpected error occurred');
+      if (mounted) setState(() => error = L.t('unexpected_error_retry'));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -82,7 +88,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     final theme = Theme.of(context);
     final r = res;
     final riskScore = r == null ? 0 : (r['risk_score'] as num).toInt();
-    
+
     final (label, color) = r == null
         ? ('', Colors.grey)
         : switch (r['risk_level']) {
@@ -105,16 +111,17 @@ class _ScoreScreenState extends State<ScoreScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Transfer Risk Scorer',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            L.t('transfer_risk_scorer'),
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Analyze transfer parameters to determine risk level and suggested action.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            L.t('transfer_risk_desc'),
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
-          
           Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -125,9 +132,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
                   TextField(
                     controller: amt,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(prefixText: 'ETB ', hintText: '0.00'),
+                    decoration: const InputDecoration(
+                        prefixText: 'ETB ', hintText: '0.00'),
                   ),
-                  
                   Row(
                     children: [
                       Expanded(
@@ -138,7 +145,8 @@ class _ScoreScreenState extends State<ScoreScreen> {
                             TextField(
                               controller: hour,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(hintText: '0-23'),
+                              decoration:
+                                  const InputDecoration(hintText: '0-23'),
                             ),
                           ],
                         ),
@@ -152,24 +160,22 @@ class _ScoreScreenState extends State<ScoreScreen> {
                             TextField(
                               controller: n24,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(hintText: 'Count'),
+                              decoration:
+                                  InputDecoration(hintText: L.t('count')),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  
                   _inputLabel(L.t('acct_age')),
                   TextField(
                     controller: age,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(suffixText: 'days'),
+                    decoration: InputDecoration(suffixText: L.t('days')),
                   ),
-                  
                   const SizedBox(height: 20),
                   const Divider(),
-                  
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(L.t('new_rcpt')),
@@ -186,30 +192,34 @@ class _ScoreScreenState extends State<ScoreScreen> {
               ),
             ),
           ),
-          
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: busy ? null : _run,
-            icon: busy 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.security),
+            icon: busy
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.security),
             label: Text(L.t('check').toUpperCase()),
           ),
-          
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 16),
-              child: Text(error!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
+              child: Text(error!,
+                  style: TextStyle(color: theme.colorScheme.error),
+                  textAlign: TextAlign.center),
             ),
-            
           const SizedBox(height: 32),
-          
           if (r != null)
             ResultCard(
               title: '$label → $actionLabel'.toUpperCase(),
               color: color,
               score: riskScore,
-              reasons: (r['reasons'] as List<dynamic>).map((e) => e.toString()).toList(),
+              reasons: (r['reasons'] as List<dynamic>)
+                  .map((e) => e.toString())
+                  .toList(),
             ),
           const SizedBox(height: 40),
         ],

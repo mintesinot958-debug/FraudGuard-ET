@@ -43,6 +43,20 @@ class ScamResult {
   ScamResult(this.score, this.label, this.reasons);
 }
 
+class PaymentSmsAnalysis {
+  final bool isPaymentRelated;
+  final int score;
+  final ScamLabel label;
+  final List<String> reasons;
+
+  PaymentSmsAnalysis({
+    required this.isPaymentRelated,
+    required this.score,
+    required this.label,
+    required this.reasons,
+  });
+}
+
 class ParsedReceipt {
   final String? txId;
   final double? amount;
@@ -260,5 +274,54 @@ class FraudEngine {
     s = min(s, 100);
     final label = s < 25 ? ScamLabel.safe : (s < 55 ? ScamLabel.suspicious : ScamLabel.scam);
     return ScamResult(s, label, why.toList());
+  }
+
+  static PaymentSmsAnalysis analyzePaymentSms(String text) {
+    final normalized = text.toLowerCase();
+    final isPaymentRelated = RegExp(
+      r'\b(payment|paid|transfer|transaction|credited|credit|debited|debit|deposit|withdrawal|balance|telebirr|cbe|mpesa|m-pesa|awash|dashen|abyssinia|coop|etb|birr)\b|ብር|ገንዘብ|ተቀብለዋል',
+      caseSensitive: false,
+    ).hasMatch(normalized);
+    if (!isPaymentRelated) {
+      return PaymentSmsAnalysis(
+        isPaymentRelated: false,
+        score: 0,
+        label: ScamLabel.safe,
+        reasons: const [],
+      );
+    }
+
+    final result = checkMessage(text);
+    var score = result.score;
+    final reasons = <String>[...result.reasons];
+    final claimsPayment = RegExp(
+      r'\b(received|credited|paid|payment successful|sent you|transferred to)\b|ተቀብለዋል',
+      caseSensitive: false,
+    ).hasMatch(normalized);
+    final asksForReturn = RegExp(
+      r'\b(send|pay|transfer|return|refund)\b.{0,30}\b(back|again|refund|money)\b|\bwrong (transfer|payment)\b',
+      caseSensitive: false,
+    ).hasMatch(normalized);
+    if (claimsPayment && asksForReturn && score < 55) {
+      score = 55;
+      reasons.add('Requests money back after claiming a payment was sent.');
+    }
+
+    score = min(score, 100);
+    final label = score < 25
+        ? ScamLabel.safe
+        : score < 55
+            ? ScamLabel.suspicious
+            : ScamLabel.scam;
+    if (reasons.isEmpty) {
+      reasons.add(
+          'No obvious scam phrases found; verify the payment in your official app.');
+    }
+    return PaymentSmsAnalysis(
+      isPaymentRelated: true,
+      score: score,
+      label: label,
+      reasons: reasons,
+    );
   }
 }

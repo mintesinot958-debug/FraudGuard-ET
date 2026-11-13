@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 import '../services/auth_store.dart';
 import '../services/backend_api.dart';
+import 'offline_safety_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final VoidCallback onToggleTheme;
+  final ThemeMode themeMode;
+
+  const AuthScreen({
+    super.key,
+    required this.onToggleTheme,
+    required this.themeMode,
+  });
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -28,23 +37,27 @@ class _AuthScreenState extends State<AuthScreen> {
     final newUrl = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Server Settings'),
+        title: Text(L.t('server_settings')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Use your computer IP or, with a real phone, the adb reverse URL: http://127.0.0.1:8000'),
+            Text(L.t('server_instructions')),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
-              decoration: const InputDecoration(labelText: 'Server URL', hintText: 'http://127.0.0.1:8000'),
+              decoration: InputDecoration(
+                  labelText: L.t('server_url'),
+                  hintText: 'http://127.0.0.1:8000'),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(L.t('cancel'))),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
+            child: Text(L.t('save')),
           ),
         ],
       ),
@@ -59,7 +72,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _submit() async {
     final email = _email.text.trim();
     if (email.isEmpty || _password.text.isEmpty) {
-      setState(() => _error = 'Please fill in all fields');
+      setState(() => _error = L.t('please_fill_all_fields'));
       return;
     }
     setState(() {
@@ -75,7 +88,7 @@ class _AuthScreenState extends State<AuthScreen> {
     } on ApiException catch (error) {
       setState(() => _error = error.message);
     } catch (_) {
-      setState(() => _error = 'Cannot reach server. Check your IP settings.');
+      setState(() => _error = L.t('cannot_reach_server'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -84,8 +97,30 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            tooltip: L.t(
+              L.lang == 'en' ? 'switch_to_amharic' : 'switch_to_english',
+            ),
+            onPressed: () => setState(
+              () => L.lang = L.lang == 'en' ? 'am' : 'en',
+            ),
+            icon: const Icon(Icons.language),
+          ),
+          IconButton(
+            tooltip: L.t(widget.themeMode == ThemeMode.light
+                ? 'switch_to_dark_mode'
+                : 'switch_to_light_mode'),
+            onPressed: widget.onToggleTheme,
+            icon: Icon(widget.themeMode == ThemeMode.light
+                ? Icons.dark_mode_outlined
+                : Icons.light_mode_outlined),
+          ),
+        ],
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -95,45 +130,105 @@ class _AuthScreenState extends State<AuthScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.shield_outlined, size: 80, color: theme.colorScheme.primary),
+                Column(
+                  children: [
+                    SizedBox(
+                      width: 76,
+                      height: 76,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.shield_rounded,
+                            size: 72,
+                            color: theme.colorScheme.primary,
+                          ),
+                          Icon(
+                            Icons.check_rounded,
+                            size: 36,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'FraudGuard ET',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 Text(
-                  _registering ? 'Create Account' : 'Welcome Back',
-                  style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                  _registering ? L.t('create_account') : L.t('welcome_back'),
+                  style: theme.textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _email,
-                  decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)),
+                  decoration: InputDecoration(
+                      labelText: L.t('email_address'),
+                      prefixIcon: Icon(Icons.email_outlined)),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline)),
+                  decoration: InputDecoration(
+                      labelText: L.t('password'),
+                      prefixIcon: Icon(Icons.lock_outline)),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 16),
-                  Text(_error!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
+                  Text(_error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                      textAlign: TextAlign.center),
                 ],
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _busy ? null : _submit,
-                  child: _busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(_registering ? 'Create account' : 'Sign in'),
+                  child: _busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(_registering
+                          ? L.t('create_account')
+                          : L.t('sign_in')),
                 ),
                 TextButton(
                   onPressed: () => setState(() => _registering = !_registering),
-                  child: Text(_registering ? 'Already have an account? Sign in' : 'New to FraudGuard? Create account'),
+                  child: Text(_registering
+                      ? L.t('already_have_account')
+                      : L.t('new_to_fraudguard')),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const OfflineSafetyScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.offline_bolt_outlined),
+                  label: Text(L.t('offline_safety_mode')),
                 ),
                 const SizedBox(height: 48),
                 InkWell(
                   onTap: _showUrlDialog,
                   child: Column(
                     children: [
-                      Text('Connected to:', style: theme.textTheme.bodySmall),
-                      Text(BackendApi.baseUrl, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-                      const Text('(Tap to change)', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      Text(L.t('connected_to'),
+                          style: theme.textTheme.bodySmall),
+                      Text(BackendApi.baseUrl,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold)),
+                      Text(L.t('tap_to_change'),
+                          style: TextStyle(fontSize: 10, color: Colors.grey)),
                     ],
                   ),
                 ),

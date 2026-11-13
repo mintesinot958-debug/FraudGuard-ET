@@ -8,7 +8,7 @@
 ## New Features & AI Integration
 - **Admin Management**: Added a dedicated panel for admins (orange shield icon) to view all registered users and manage educational content.
 - **Education Hub**: Created a new "Learn" tab for users to access fraud prevention videos.
-- **AI Safety Summaries**: Integrated **Google Gemini AI** (Gemini 1.5 Flash) to automatically generate safety tips for every educational video posted by admins.
+- **AI Safety Summaries**: Integrated **Google Gemini AI** (Gemini 2.5 Flash, auto-discovered) to automatically generate safety tips for every educational video posted by admins.
 - **Video Uploads**: Added support for both external video links (YouTube) and direct MP4 file uploads from the phone's gallery.
 - **Real AI Fraud Engine**: Implemented an **Isolation Forest** machine learning model in the backend to detect anomalous transaction patterns.
 
@@ -26,8 +26,13 @@
 - Dark theme unified with a shared theme builder for consistent styling.
 
 ## Backend
-- Tests: 13/13 pass. Added `python-multipart` and `google-generativeai` dependencies.
-- Security: `JWT_SECRET` and `GEMINI_API_KEY` are now securely loaded from the environment/`.env`.
+- Tests: 13/13 pass. Added `python-multipart` and dependencies.
+- Security: `JWT_SECRET` and `GROQ_API_KEY` are loaded from the environment/`.env`.
 
 ## Package cleanup
 Removed `.venv`, `.dart_tool`, `build`, `.idea`, `__pycache__` and `fraudguard.db`.
+
+## AI Voice Assistant 404 fix (latest)
+- The AI voice assistant uses Groq exclusively via `GROQ_API_KEY`; Gemini is no longer used as a fallback.
+- If Groq is unavailable or the key/model is invalid, the backend reports an AI service error. Configure a valid GroqCloud key in `backend/.env` and restart the backend.
+- Restored backend routes the app calls but were missing: `GET /auth/me`, `POST /transactions/score`, `GET /admin/alerts`, `PATCH /admin/alerts/{id}`; receipt verification again returns `verification_details`, handles amount mismatch and unverified results. Tests: 13/13 pass.

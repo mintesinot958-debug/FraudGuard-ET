@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../l10n.dart';
 import '../services/backend_api.dart';
 import '../services/fraud_engine.dart';
+import 'sms_monitor_screen.dart';
 import '../widgets/result_card.dart';
 
 class ScamScreen extends StatefulWidget {
@@ -23,6 +24,12 @@ class _ScamScreenState extends State<ScamScreen> {
   bool _busy = false;
   bool _listening = false;
   bool _isChatMode = true;
+
+  String _scamLabel(ScamLabel label) => switch (label) {
+        ScamLabel.safe => L.t('safe'),
+        ScamLabel.suspicious => L.t('suspicious'),
+        ScamLabel.scam => L.t('scam'),
+      };
 
   @override
   void initState() {
@@ -90,7 +97,7 @@ class _ScamScreenState extends State<ScamScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: const Text('Connection Error: Is the Backend terminal running?'),
+              content: Text(L.t('connection_error')),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 8)),
         );
@@ -128,7 +135,9 @@ class _ScamScreenState extends State<ScamScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _isChatMode ? 'AI Voice Assistant' : 'Message Analyzer',
+                _isChatMode
+                    ? L.t('ai_voice_assistant')
+                    : L.t('message_analyzer'),
                 style: theme.textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
@@ -142,6 +151,19 @@ class _ScamScreenState extends State<ScamScreen> {
               ),
             ],
           ),
+          if (!kIsWeb &&
+              Theme.of(context).platform == TargetPlatform.android) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SmsMonitorScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.sms_outlined),
+              label: Text(L.t('scan_payment_sms')),
+            ),
+          ],
           const SizedBox(height: 24),
           Stack(
             children: [
@@ -149,9 +171,8 @@ class _ScamScreenState extends State<ScamScreen> {
                 controller: _controller,
                 maxLines: _isChatMode ? 3 : 8,
                 decoration: InputDecoration(
-                  hintText: _isChatMode
-                      ? 'Ask about fraud safety...'
-                      : L.t('paste_msg'),
+                  hintText:
+                      _isChatMode ? L.t('ask_fraud_safety') : L.t('paste_msg'),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20)),
                   filled: true,
@@ -196,8 +217,8 @@ class _ScamScreenState extends State<ScamScreen> {
                         ? Icons.auto_awesome
                         : Icons.analytics_outlined),
                 label: Text(_busy
-                    ? 'THINKING...'
-                    : (_isChatMode ? 'ASK FRAUDGUARD AI' : L.t('check'))
+                    ? L.t('thinking')
+                    : (_isChatMode ? L.t('ask_fraudguard_ai') : L.t('check'))
                         .toUpperCase()),
               );
             },
@@ -220,7 +241,7 @@ class _ScamScreenState extends State<ScamScreen> {
                       children: [
                         const Icon(Icons.bolt, color: Colors.amber),
                         const SizedBox(width: 8),
-                        Text('AI RESPONSE',
+                        Text(L.t('ai_response'),
                             style: theme.textTheme.labelLarge
                                 ?.copyWith(fontWeight: FontWeight.bold)),
                         const Spacer(),
@@ -238,14 +259,15 @@ class _ScamScreenState extends State<ScamScreen> {
             ),
           if (!_isChatMode && res != null) ...[
             ResultCard(
-              title: res!.label.name.toUpperCase(),
+              title: _scamLabel(res!.label).toUpperCase(),
               color: res!.label == ScamLabel.safe
                   ? Colors.green
                   : (res!.label == ScamLabel.scam ? Colors.red : Colors.orange),
               score: res!.score,
-              reasons:
-                  res!.reasons.isEmpty ? ['No red flags found.'] : res!.reasons,
-              footer: 'Detection performed by local rules engine.',
+              reasons: res!.reasons.isEmpty
+                  ? [L.t('no_red_flags_found')]
+                  : res!.reasons,
+              footer: L.t('local_rules_engine'),
             ),
           ],
           const SizedBox(height: 40),
