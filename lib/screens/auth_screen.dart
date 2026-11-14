@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n.dart';
 import '../services/auth_store.dart';
 import '../services/backend_api.dart';
+import 'forgot_password_screen.dart';
 import 'offline_safety_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -54,6 +55,20 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() => _error = L.t('cannot_reach_server'));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openPasswordReset() async {
+    final reset = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(initialEmail: _email.text.trim()),
+      ),
+    );
+    if (reset == true && mounted) {
+      setState(() => _error = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L.t('password_reset_success'))),
+      );
     }
   }
 
@@ -170,6 +185,11 @@ class _AuthScreenState extends State<AuthScreen> {
                       ? L.t('already_have_account')
                       : L.t('new_to_fraudguard')),
                 ),
+                if (!_registering)
+                  TextButton(
+                    onPressed: _busy ? null : _openPasswordReset,
+                    child: Text(L.t('forgot_password')),
+                  ),
                 OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(

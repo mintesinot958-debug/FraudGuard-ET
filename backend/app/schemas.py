@@ -9,6 +9,16 @@ class Credentials(BaseModel):
     password: str = Field(min_length=10, max_length=128)
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetComplete(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{8}$")
+    new_password: str = Field(min_length=10, max_length=128)
+
+
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
@@ -150,6 +160,21 @@ class EducationCreate(BaseModel):
     video_url: str = Field(min_length=1, max_length=500)
     description: str = Field(min_length=1, max_length=1000)
     category: str = "general"
+
+
+class EducationUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(max_length=1000)
+    category: str = Field(min_length=1, max_length=50)
+    video_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("title", "category")
+    @classmethod
+    def trim_required_fields(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("This field cannot be blank.")
+        return value
 
 
 class EducationResponse(BaseModel):

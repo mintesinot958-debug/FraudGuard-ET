@@ -105,6 +105,22 @@ class BackendApi {
     return data['user'] as Map<String, dynamic>;
   }
 
+  Future<void> requestPasswordReset(String email) async {
+    await _request('POST', '/auth/forgot-password', body: {'email': email});
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _request('POST', '/auth/reset-password', body: {
+      'email': email,
+      'code': code,
+      'new_password': newPassword,
+    });
+  }
+
   Future<Map<String, dynamic>> verifyReceipt(
       {required String bank,
       String? reference,
@@ -175,6 +191,10 @@ class BackendApi {
       '/admin/community/reports/$id',
       body: {'status': status},
     );
+  }
+
+  Future<void> deleteCommunityReport(int id) async {
+    await _request('DELETE', '/admin/community/reports/$id');
   }
 
   Future<Map<String, dynamic>> reconciliation() async {
@@ -284,7 +304,7 @@ class BackendApi {
     final uri = Uri.parse('$baseUrl/admin/education/posts');
     final request = http.MultipartRequest('POST', uri);
     request.headers.addAll({
-      if (_token != null) 'Authorization': '******',
+      if (_token != null) 'Authorization': 'Bearer $_token',
     });
     request.fields['post_type'] = postType;
     request.fields['title'] = title;
@@ -312,6 +332,21 @@ class BackendApi {
       );
     }
     return data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateEducation({
+    required int id,
+    required String title,
+    required String description,
+    required String category,
+    String? videoUrl,
+  }) async {
+    return await _request('PATCH', '/admin/education/$id', body: {
+      'title': title,
+      'description': description,
+      'category': category,
+      if (videoUrl != null) 'video_url': videoUrl,
+    }) as Map<String, dynamic>;
   }
 
   Future<void> deleteEducation(int id) async {

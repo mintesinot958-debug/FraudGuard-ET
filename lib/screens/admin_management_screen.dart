@@ -122,6 +122,103 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     }
   }
 
+  Future<void> _editEducation(Map<String, dynamic> item) async {
+    final titleController =
+        TextEditingController(text: item['title'] as String? ?? '');
+    final descriptionController =
+        TextEditingController(text: item['description'] as String? ?? '');
+    final categoryController =
+        TextEditingController(text: item['category'] as String? ?? 'general');
+    final videoUrlController =
+        TextEditingController(text: item['video_url'] as String? ?? '');
+    final isVideo = (item['post_type'] as String? ?? 'video') == 'video';
+
+    try {
+      final changes = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(L.t('edit_post')),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(labelText: L.t('title')),
+                ),
+                if (isVideo)
+                  TextField(
+                    controller: videoUrlController,
+                    decoration: InputDecoration(labelText: L.t('video_url')),
+                  ),
+                TextField(
+                  controller: descriptionController,
+                  minLines: 2,
+                  maxLines: 5,
+                  decoration: InputDecoration(labelText: L.t('description')),
+                ),
+                TextField(
+                  controller: categoryController,
+                  decoration: InputDecoration(labelText: L.t('category')),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(L.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, {
+                'title': titleController.text.trim(),
+                'description': descriptionController.text.trim(),
+                'category': categoryController.text.trim(),
+                if (isVideo) 'video_url': videoUrlController.text.trim(),
+              }),
+              child: Text(L.t('save')),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (changes == null) return;
+      if (changes['title']!.isEmpty || changes['category']!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L.t('enter_title'))),
+        );
+        return;
+      }
+
+      await BackendApi.instance.updateEducation(
+        id: item['id'] as int,
+        title: changes['title']!,
+        description: changes['description']!,
+        category: changes['category']!,
+        videoUrl: changes['video_url'],
+      );
+      if (!mounted) return;
+      await _refreshData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L.t('education_post_updated'))),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('${L.t('education_post_update_fail')}: $error')),
+        );
+      }
+    } finally {
+      titleController.dispose();
+      descriptionController.dispose();
+      categoryController.dispose();
+      videoUrlController.dispose();
+    }
+  }
+
   Future<void> _addVideo() async {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
@@ -463,11 +560,22 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                             .isNotEmpty
                                     ? () => _viewVideo(video['video_url'])
                                     : null,
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline,
-                                      color: Colors.red),
-                                  onPressed: () => _deleteVideo(video['id']),
-                                  tooltip: L.t('delete_post'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined),
+                                      onPressed: () => _editEducation(video),
+                                      tooltip: L.t('edit_post'),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Colors.red),
+                                      onPressed: () =>
+                                          _deleteVideo(video['id']),
+                                      tooltip: L.t('delete_post'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

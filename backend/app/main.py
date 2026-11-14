@@ -1,15 +1,30 @@
+import hashlib
+import hmac
+import logging
 import os
+import secrets
+import smtplib
 import shutil
 import uuid
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from typing import Any
 
 import httpx
 
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Form, Query
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    UploadFile,
+    File,
+    Form,
+    Query,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func, inspect, select, text
+from sqlalchemy import delete, func, inspect, select, text, update
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -23,6 +38,7 @@ from .models import (
     Transaction,
     User,
     EducationContent,
+    PasswordResetToken,
 )
 from .schemas import (
     AuthResponse,
@@ -40,6 +56,9 @@ from .schemas import (
     TransferSubmission,
     UserResponse,
     EducationResponse,
+    EducationUpdate,
+    PasswordResetComplete,
+    PasswordResetRequest,
 )
 from .security import (
     create_access_token,
@@ -54,8 +73,18 @@ UPLOAD_DIR = os.path.join(UPLOAD_ROOT, "videos")
 IMAGE_UPLOAD_DIR = os.path.join(UPLOAD_ROOT, "education")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(IMAGE_UPLOAD_DIR, exist_ok=True)
+logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
+user_columns = {column["name"] for column in inspect(engine).get_columns("users")}
+if "token_version" not in user_columns:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE users "
+                "ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0"
+            )
+        )
 education_columns = {
     column["name"] for column in inspect(engine).get_columns("education_content")
 }
@@ -83,6 +112,163 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+def _password_reset_email_configured() -> bool:
+    smtp_credentials_match = (settings.smtp_username is None) == (
+        settings.smtp_password is None
+    )
+    return bool(
+        settings.smtp_host
+        and settings.smtp_from_email
+        and smtp_credentials_match
+        and settings.smtp_starttls
+    )
+
+
+def _password_reset_code_hash(user_id: int, code: str) -> str:
+    message = f"password-reset:{user_id}:{code}".encode()
+    return hmac.new(settings.jwt_secret.encode(), message, hashlib.sha256).hexdigest()
+
+
+def _send_password_reset_code(email: str, code: str) -> None:
+    message = EmailMessage()
+    message["Subject"] = "Your FraudGuard password reset code"
+    message["From"] = settings.smtp_from_email
+    message["To"] = email
+    message.set_content(
+        f"Your FraudGuard password reset code is {code}.\n\n"
+        "It expires in 15 minutes. If you did not request this code, "
+        "you can ignore this email."
+    )
+
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:
+        if settings.smtp_starttls:
+            smtp.starttls()
+        if settings.smtp_username is not None:
+            smtp.login(settings.smtp_username, settings.smtp_password)
+        smtp.send_message(message)
+
+
+def _deliver_password_reset_code(email: str, code: str) -> None:
+    try:
+        _send_password_reset_code(email, code)
+    except (OSError, ValueError, smtplib.SMTPException):
+        logger.exception("Could not send password reset email.")
+
+
+_RESET_REQUEST_MESSAGE = (
+    "If an account exists for that email, a password reset code has been sent."
+)
+_RESET_CODE_INVALID_MESSAGE = "The reset code is invalid or expired."
+
+
+@app.post("/auth/forgot-password", status_code=202)
+def request_password_reset(
+    body: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    if not _password_reset_email_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Password reset email is not configured on the server.",
+        )
+
+    now = datetime.now(timezone.utc)
+    email = str(body.email).strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
+        return {"message": _RESET_REQUEST_MESSAGE}
+
+    db.execute(
+        delete(PasswordResetToken).where(
+            PasswordResetToken.expires_at < now - timedelta(days=1)
+        )
+    )
+    recent_minute_count = db.scalar(
+        select(func.count()).select_from(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.created_at >= now - timedelta(minutes=1),
+        )
+    )
+    recent_hour_count = db.scalar(
+        select(func.count()).select_from(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.created_at >= now - timedelta(hours=1),
+        )
+    )
+    if recent_minute_count or recent_hour_count >= 5:
+        return {"message": _RESET_REQUEST_MESSAGE}
+
+    db.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        )
+        .values(used_at=now)
+    )
+    code = f"{secrets.randbelow(100_000_000):08d}"
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        token_hash=_password_reset_code_hash(user.id, code),
+        created_at=now,
+        expires_at=now + timedelta(minutes=15),
+    )
+    db.add(reset_token)
+    db.commit()
+    background_tasks.add_task(_deliver_password_reset_code, email, code)
+    return {"message": _RESET_REQUEST_MESSAGE}
+
+
+@app.post("/auth/reset-password")
+def complete_password_reset(
+    body: PasswordResetComplete,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    email = str(body.email).strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
+        raise HTTPException(status_code=400, detail=_RESET_CODE_INVALID_MESSAGE)
+
+    now = datetime.now(timezone.utc)
+    reset_token = db.scalar(
+        select(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+            PasswordResetToken.attempt_count < 5,
+        )
+        .order_by(PasswordResetToken.created_at.desc())
+    )
+    if reset_token is None:
+        raise HTTPException(status_code=400, detail=_RESET_CODE_INVALID_MESSAGE)
+
+    expected_hash = _password_reset_code_hash(user.id, body.code)
+    if not hmac.compare_digest(reset_token.token_hash, expected_hash):
+        reset_token.attempt_count += 1
+        if reset_token.attempt_count >= 5:
+            reset_token.used_at = now
+        db.commit()
+        raise HTTPException(status_code=400, detail=_RESET_CODE_INVALID_MESSAGE)
+
+    user.password_hash = hash_password(body.new_password)
+    user.token_version += 1
+    reset_token.used_at = now
+    db.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.id != reset_token.id,
+            PasswordResetToken.used_at.is_(None),
+        )
+        .values(used_at=now)
+    )
+    db.commit()
+    return {"message": "Password reset successful. Please sign in again."}
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -445,6 +631,20 @@ def admin_update_community_report(
     return report
 
 
+@app.delete("/admin/community/reports/{report_id}", status_code=204)
+def admin_delete_community_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    report = db.get(CommunityReport, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Community report not found.")
+    db.delete(report)
+    db.commit()
+    return None
+
+
 @app.post(
     "/reconciliation/expected",
     response_model=ExpectedPaymentResult,
@@ -592,14 +792,41 @@ def delete_expected_payment(
     return None
 
 
+@app.patch("/admin/education/{content_id}", response_model=EducationResponse)
+def update_education(
+    content_id: int,
+    body: EducationUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    item = db.get(EducationContent, content_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Educational content not found.")
+    item.title = body.title.strip()
+    item.description = body.description.strip()
+    item.category = body.category.strip()
+    if item.post_type == "video" and body.video_url is not None:
+        item.video_url = body.video_url.strip()
+    db.commit()
+    db.refresh(item)
+    return item
+
+
 @app.delete("/admin/education/{content_id}", status_code=204)
 def delete_education(content_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     item = db.get(EducationContent, content_id)
     if item:
         for media_url in (item.video_url, item.image_url or ""):
             if media_url.startswith("/uploads/"):
-                path = media_url.lstrip("/")
-                if os.path.exists(path):
+                upload_root = os.path.abspath(UPLOAD_ROOT)
+                path = os.path.abspath(
+                    os.path.join(UPLOAD_ROOT, media_url.removeprefix("/uploads/"))
+                )
+                try:
+                    is_upload = os.path.commonpath((upload_root, path)) == upload_root
+                except ValueError:
+                    is_upload = False
+                if is_upload and os.path.isfile(path):
                     os.remove(path)
         db.delete(item); db.commit()
     return None

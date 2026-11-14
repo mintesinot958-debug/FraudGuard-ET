@@ -293,6 +293,52 @@ class _CommunityReportsScreenState extends State<CommunityReportsScreen> {
     }
   }
 
+  Future<void> _deleteReport(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(L.t('delete_report_title')),
+        content: Text(L.t('delete_report_confirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(L.t('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              L.t('delete'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirm != true) return;
+
+    try {
+      await BackendApi.instance.deleteCommunityReport(id);
+      if (!mounted) return;
+      await _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L.t('report_delete_success'))),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${L.t('report_delete_fail')}: $error')),
+        );
+      }
+    }
+  }
+
   Widget _reportForm() {
     return Card(
       child: Padding(
@@ -415,6 +461,15 @@ class _CommunityReportsScreenState extends State<CommunityReportsScreen> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
+                if (_isAdmin)
+                  IconButton(
+                    onPressed: () => _deleteReport(id),
+                    tooltip: L.t('delete_report'),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                    ),
+                  ),
                 if (_isAdmin || isMine)
                   Chip(
                     label: Text(statusLabel),

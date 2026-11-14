@@ -49,6 +49,7 @@ def create_access_token(user: User) -> str:
                 "sub": str(user.id),
                 "iat": now,
                 "exp": now + settings.jwt_expire_minutes * 60,
+                "ver": user.token_version,
             },
             separators=(",", ":"),
         ).encode()
@@ -83,13 +84,14 @@ def get_current_user(
             base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4))
         )
         user_id = int(body["sub"])
+        token_version = int(body.get("ver", 0))
         if int(body["exp"]) <= int(time.time()):
             raise unauthorized
     except (ValueError, KeyError, TypeError, json.JSONDecodeError):
         raise unauthorized from None
 
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or user.token_version != token_version:
         raise unauthorized
     return user
 

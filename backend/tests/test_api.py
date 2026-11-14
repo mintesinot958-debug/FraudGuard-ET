@@ -1,4 +1,5 @@
 import os
+import smtplib
 import tempfile
 import unittest
 import asyncio
@@ -395,6 +396,27 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(blank_title.status_code, 422)
 
+        report_id_to_delete = second_report.json()["id"]
+        forbidden_delete = self.client.delete(
+            f"/admin/community/reports/{report_id_to_delete}",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        self.assertEqual(forbidden_delete.status_code, 403)
+        deleted = self.client.delete(
+            f"/admin/community/reports/{report_id_to_delete}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        self.assertEqual(deleted.status_code, 204)
+        remaining_reports = self.client.get(
+            "/admin/community/reports",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        self.assertEqual(remaining_reports.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in remaining_reports.json()],
+            [report_id],
+        )
+
     @patch("app.main.verify_with_cheki")
     def test_payment_reconciliation_finds_mismatches_duplicates_and_private_data(
         self, verify
@@ -604,12 +626,49 @@ class ApiTests(unittest.TestCase):
         post_types = {post["post_type"] for post in public_posts.json()}
         self.assertEqual(post_types, {"text", "image"})
 
+        forbidden_update = self.client.patch(
+            f"/admin/education/{text_post.json()['id']}",
+            headers=user_headers,
+            json={
+                "title": "Changed by user",
+                "description": "This update should not be allowed.",
+                "category": "security",
+            },
+        )
+        self.assertEqual(forbidden_update.status_code, 403)
+        forbidden_delete = self.client.delete(
+            f"/admin/education/{text_post.json()['id']}",
+            headers=user_headers,
+        )
+        self.assertEqual(forbidden_delete.status_code, 403)
+
+        updated_text_post = self.client.patch(
+            f"/admin/education/{text_post.json()['id']}",
+            headers=admin_headers,
+            json={
+                "title": "Updated payment safety",
+                "description": "Never share a payment PIN with anyone.",
+                "category": "security",
+            },
+        )
+        self.assertEqual(updated_text_post.status_code, 200, updated_text_post.text)
+        self.assertEqual(updated_text_post.json()["title"], "Updated payment safety")
+        self.assertEqual(
+            updated_text_post.json()["description"],
+            "Never share a payment PIN with anyone.",
+        )
+
+        from app.main import IMAGE_UPLOAD_DIR
+
+        image_path = Path(IMAGE_UPLOAD_DIR) / image_url.rsplit("/", 1)[-1]
+        self.assertTrue(image_path.is_file())
         for post in (text_post.json(), image_post.json()):
             deleted = self.client.delete(
                 f"/admin/education/{post['id']}",
                 headers=admin_headers,
             )
             self.assertEqual(deleted.status_code, 204)
+        self.assertFalse(image_path.exists())
 
     def test_login_rejects_wrong_password(self) -> None:
         self.register("login@example.com")
@@ -618,6 +677,129 @@ class ApiTests(unittest.TestCase):
             json={"email": "login@example.com", "password": "incorrect-password"},
         )
         self.assertEqual(response.status_code, 401)
+
+    def test_password_reset_uses_one_time_code_and_revokes_old_sessions(self) -> None:
+        old_token = self.register("reset@example.com")
+        self.register("reset-mail-failure@example.com")
+        smtp_settings = SimpleNamespace(
+            admin_emails=frozenset({"admin@example.com"}),
+            jwt_secret="test-only-secret-with-more-than-32-characters",
+            smtp_host="smtp.example.test",
+            smtp_port=587,
+            smtp_username=None,
+            smtp_password=None,
+            smtp_from_email="noreply@example.test",
+            smtp_starttls=True,
+        )
+        with (
+            patch("app.main.settings", smtp_settings),
+            patch("app.main._send_password_reset_code") as send_email,
+        ):
+            request = self.client.post(
+                "/auth/forgot-password",
+                json={"email": "reset@example.com"},
+            )
+            self.assertEqual(request.status_code, 202, request.text)
+            code = send_email.call_args.args[1]
+            self.assertRegex(code, r"^\d{8}$")
+
+            resend = self.client.post(
+                "/auth/forgot-password",
+                json={"email": "reset@example.com"},
+            )
+            self.assertEqual(resend.status_code, 202)
+            self.assertEqual(resend.json(), request.json())
+            send_email.assert_called_once()
+
+            unknown = self.client.post(
+                "/auth/forgot-password",
+                json={"email": "unknown-reset@example.com"},
+            )
+            self.assertEqual(unknown.status_code, 202)
+            self.assertEqual(unknown.json(), request.json())
+            send_email.assert_called_once()
+
+            with (
+                patch(
+                    "app.main._send_password_reset_code",
+                    side_effect=smtplib.SMTPException("simulated mail failure"),
+                ),
+                self.assertLogs("app.main", level="ERROR"),
+            ):
+                failed_delivery = self.client.post(
+                    "/auth/forgot-password",
+                    json={"email": "reset-mail-failure@example.com"},
+                )
+            self.assertEqual(failed_delivery.status_code, 202)
+            self.assertEqual(failed_delivery.json(), request.json())
+
+            incorrect_code = "00000000" if code != "00000000" else "11111111"
+            incorrect = self.client.post(
+                "/auth/reset-password",
+                json={
+                    "email": "reset@example.com",
+                    "code": incorrect_code,
+                    "new_password": "updated-password-123",
+                },
+            )
+            self.assertEqual(incorrect.status_code, 400)
+
+            reset = self.client.post(
+                "/auth/reset-password",
+                json={
+                    "email": "reset@example.com",
+                    "code": code,
+                    "new_password": "updated-password-123",
+                },
+            )
+            self.assertEqual(reset.status_code, 200, reset.text)
+
+            old_session = self.client.get(
+                "/auth/me",
+                headers={"Authorization": f"Bearer {old_token}"},
+            )
+            self.assertEqual(old_session.status_code, 401)
+
+            old_password = self.client.post(
+                "/auth/login",
+                json={"email": "reset@example.com", "password": "safe-password-123"},
+            )
+            self.assertEqual(old_password.status_code, 401)
+
+            new_login = self.client.post(
+                "/auth/login",
+                json={
+                    "email": "reset@example.com",
+                    "password": "updated-password-123",
+                },
+            )
+            self.assertEqual(new_login.status_code, 200, new_login.text)
+
+            reused_code = self.client.post(
+                "/auth/reset-password",
+                json={
+                    "email": "reset@example.com",
+                    "code": code,
+                    "new_password": "another-password-456",
+                },
+            )
+            self.assertEqual(reused_code.status_code, 400)
+
+    def test_password_reset_requires_smtp_configuration(self) -> None:
+        smtp_settings = SimpleNamespace(
+            smtp_host=None,
+            smtp_port=587,
+            smtp_username=None,
+            smtp_password=None,
+            smtp_from_email=None,
+            smtp_starttls=False,
+        )
+        with patch("app.main.settings", smtp_settings):
+            response = self.client.post(
+                "/auth/forgot-password",
+                json={"email": "anyone@example.com"},
+            )
+        self.assertEqual(response.status_code, 503)
 
 
 if __name__ == "__main__":

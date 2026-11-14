@@ -15,6 +15,12 @@ class Settings:
     admin_emails: frozenset[str]
     cors_origins: tuple[str, ...]
     groq_api_key: str | None
+    smtp_host: str | None
+    smtp_port: int
+    smtp_username: str | None
+    smtp_password: str | None
+    smtp_from_email: str | None
+    smtp_starttls: bool
 
 
 def get_settings() -> Settings:
@@ -47,6 +53,13 @@ def get_settings() -> Settings:
             if origin.strip()
         ),
         groq_api_key=os.getenv("GROQ_API_KEY", "").strip() or None,
+        smtp_host=os.getenv("SMTP_HOST", "").strip() or None,
+        smtp_port=int(os.getenv("SMTP_PORT", "587")),
+        smtp_username=os.getenv("SMTP_USERNAME", "").strip() or None,
+        smtp_password=os.getenv("SMTP_PASSWORD", "").strip() or None,
+        smtp_from_email=os.getenv("SMTP_FROM_EMAIL", "").strip() or None,
+        smtp_starttls=os.getenv("SMTP_STARTTLS", "true").strip().lower()
+        not in {"0", "false", "no", "off"},
     )
 
 

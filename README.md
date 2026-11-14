@@ -53,3 +53,24 @@ locally. Starting the local backend above does not change the app's endpoint.
    or computer IP address needs to be added to Render.
 
 Keep the generated `JWT_SECRET` private. The PostgreSQL database stores app records, and the mounted disk stores uploaded education media across service restarts and deploys.
+
+### Password reset email
+
+Configure these environment variables on the backend to enable password resets:
+
+- `SMTP_HOST`: your email provider's SMTP server.
+- `SMTP_PORT`: SMTP port (defaults to `587`).
+- `SMTP_USERNAME` and `SMTP_PASSWORD`: SMTP credentials; set both or leave both empty.
+- `SMTP_FROM_EMAIL`: verified sender address.
+- `SMTP_STARTTLS`: must remain `true` so reset codes are sent over an encrypted connection.
+
+For Brevo, use `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, and
+`SMTP_STARTTLS=true`. Set `SMTP_USERNAME` to the SMTP login shown under Brevo's
+SMTP settings (it may differ from your Brevo account email), and
+`SMTP_PASSWORD` to a generated **SMTP key**, not an API key. Use a sender address
+verified in Brevo for `SMTP_FROM_EMAIL`. If port 587 is blocked, Brevo supports
+port 2525 with TLS.
+
+The app sends an eight-digit, single-use code that expires after 15 minutes. Reset
+requests are rate-limited per account. If SMTP is not configured, the reset
+screen reports that the service is unavailable.
